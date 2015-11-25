@@ -2,8 +2,8 @@
     <string name="app_name">GeoQuiz</string>
     <string name="true_button">True</string>
     <string name="false_button">False</string>
-    <string name="prev_button">Prev</string>
-    <string name="next_button">Next</string>
+    <string name="prev_button_content">Previous</string>
+    <string name="next_button_content">Next</string>
     <string name="correct_toast">Correct!</string>
     <string name="incorrect_toast">Incorrect!</string>
     <string name="action_settings">Settings</string>
