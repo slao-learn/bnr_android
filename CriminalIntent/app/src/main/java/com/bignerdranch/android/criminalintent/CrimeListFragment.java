@@ -32,11 +32,21 @@ public class CrimeListFragment extends Fragment {
         return view;
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateUI();
+    }
+
     private void updateUI() {
         CrimeLab crimeLab = CrimeLab.get((getActivity()));
         List<Crime> crimes = crimeLab.getCrimes();
-        mAdapter = new CrimeAdapter(crimes);
-        mCrimeRecyclerView.setAdapter(mAdapter);
+        if (mAdapter == null) {
+            mAdapter = new CrimeAdapter(crimes);
+            mCrimeRecyclerView.setAdapter(mAdapter);
+        } else {
+            mAdapter.update();
+        }
     }
 
     private class CrimeHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
@@ -45,6 +55,8 @@ public class CrimeListFragment extends Fragment {
         private TextView mTitleTextView;
         private TextView mDateTextView;
         private CheckBox mSolvedCheckBox;
+        private int mPosition;
+        private CrimeAdapter mAdapter;
 
         public CrimeHolder(View itemView) {
             super(itemView);
@@ -54,26 +66,38 @@ public class CrimeListFragment extends Fragment {
             mSolvedCheckBox = (CheckBox) itemView.findViewById(R.id.list_item_crime_solved_check_box);
         }
 
-        public void bindCrime(Crime crime) {
+        public void bindCrime(Crime crime, int position, CrimeAdapter adapter) {
             mCrime = crime;
+            mPosition = position;
             mTitleTextView.setText(mCrime.getTitle());
             mDateTextView.setText(mCrime.getDate().toString());
             mSolvedCheckBox.setChecked(mCrime.isSolved());
+            mAdapter = adapter;
         }
 
         @Override
         public void onClick(View v) {
             Intent intent = CrimeActivity.newIntent(getActivity(), mCrime.getId());
             startActivity(intent);
+            mAdapter.setLastCrimePosition(mPosition);
         }
     }
 
     private class CrimeAdapter extends RecyclerView.Adapter<CrimeHolder>
     {
         private List<Crime> mCrimes;
+        private int mLastCrimePosition;
 
         public CrimeAdapter(List<Crime> crimes) {
             mCrimes = crimes;
+        }
+
+        public void setLastCrimePosition(int position) {
+           mLastCrimePosition = position;
+        }
+
+        public void update() {
+            notifyItemChanged(mLastCrimePosition);
         }
 
         @Override
@@ -86,7 +110,7 @@ public class CrimeListFragment extends Fragment {
         @Override
         public void onBindViewHolder(CrimeHolder holder, int position) {
             Crime crime = mCrimes.get(position);
-            holder.bindCrime(crime);
+            holder.bindCrime(crime, position, this);
         }
 
         @Override
