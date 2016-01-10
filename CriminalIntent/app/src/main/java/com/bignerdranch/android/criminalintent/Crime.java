@@ -12,6 +12,8 @@ public class Crime {
     private Date mDate;
     private boolean mSolved;
     private String mSuspect;
+    private Long mSuspectContactId;
+    private String mPhone;
 
     public Crime() {
         // Generate unique identifier
@@ -57,5 +59,21 @@ public class Crime {
 
     public void setSuspect(String suspect) {
         mSuspect = suspect;
+    }
+
+    public Long getSuspectContactId() {
+        return mSuspectContactId;
+    }
+
+    public void setSuspectContactId(Long suspectContactId) {
+        mSuspectContactId = suspectContactId;
+    }
+
+    public String getPhone() {
+        return mPhone;
+    }
+
+    public void setPhone(String phone) {
+        mPhone = phone;
     }
 }

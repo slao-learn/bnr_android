@@ -1,5 +1,6 @@
 package com.bignerdranch.android.criminalintent;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -7,12 +8,15 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.ShareCompat;
+import android.support.v4.content.ContextCompat;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -39,6 +43,9 @@ public class CrimeFragment extends Fragment{
     private static final int REQUEST_TIME = 1;
     private static final int REQUEST_CONTACT = 2;
 
+    private static final int REQUEST_PERMISSION_READ_CONTACT = 0;
+    private static final int REQUEST_PERMISSION_MAKE_CALL = 1;
+
     private Crime mCrime;
     private EditText mTitleField;
     private Button mDateButton;
@@ -46,6 +53,9 @@ public class CrimeFragment extends Fragment{
     private Button mTimeButton;
     private Button mSuspectButton;
     private Button mReportButton;
+    private Button mCallButton;
+    private Long mPhoneCallbackContactId;
+    private PhoneCallback mPhoneCallback;
 
     public static CrimeFragment newInstance(UUID crimeId) {
         Bundle args = new Bundle();
@@ -173,17 +183,55 @@ public class CrimeFragment extends Fragment{
                 startActivityForResult(pickContact, REQUEST_CONTACT);
             }
         });
-        if (mCrime.getSuspect() != null) {
-            mSuspectButton.setText(mCrime.getSuspect());
-        }
 
-        PackageManager packageManager = getActivity().getPackageManager();
+        final PackageManager packageManager = getActivity().getPackageManager();
         if (packageManager.resolveActivity(pickContact,
                 PackageManager.MATCH_DEFAULT_ONLY) == null) {
             mSuspectButton.setEnabled(false);
         }
 
+        mCallButton = (Button) v.findViewById(R.id.crime_call_suspect);
+        mCallButton.setEnabled(false);
+        mCallButton.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getPhoneNumber(mCrime.getSuspectContactId(), new PhoneCallback() {
+                    @Override
+                    public void onPhoneRetrieved(String phone) {
+                        if (phone == null) {
+                            return;
+                        }
+                        mCrime.setPhone(phone);
+                        int permissionCheck = ContextCompat.checkSelfPermission(getActivity(),
+                                Manifest.permission.CALL_PHONE);
+                        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+                            ActivityCompat.requestPermissions(getActivity(),
+                                    new String[] {Manifest.permission.CALL_PHONE},
+                                    REQUEST_PERMISSION_MAKE_CALL);
+                        } else {
+                            makeCall();
+                        }
+                    }
+                });
+            }
+        });
+
+        getPhoneNumber(mCrime.getSuspectContactId(), new PhoneCallback() {
+            @Override
+            public void onPhoneRetrieved(String phone) {
+                Log.d("SLD", "onPhoneRetrieved phone=" + phone);
+                mCrime.setPhone(phone);
+                updateSuspectInfo(mCrime.getSuspect(), phone);
+            }
+        });
+
         return v;
+    }
+
+    private void makeCall() {
+        Uri number = Uri.parse("tel:" + mCrime.getPhone());
+        final Intent makeCall = new Intent(Intent.ACTION_DIAL, number);
+        startActivity(makeCall);
     }
 
     @Override
@@ -203,6 +251,7 @@ public class CrimeFragment extends Fragment{
             Uri contactUri = data.getData();
             // Specify which fields you want your query to return values for
             String[] queryFields = new String[] {
+                    ContactsContract.Contacts._ID,
                     ContactsContract.Contacts.DISPLAY_NAME
             };
             // Perform your query - the contactUri is like a "where" clause here
@@ -216,14 +265,105 @@ public class CrimeFragment extends Fragment{
                 }
 
                 // Pull out the first column of the first row of data -
-                // that is your suspect's name
+                // that is your suspect's id and name
                 c.moveToFirst();
 
-                String suspect = c.getString(0);
+                final Long contactId = c.getLong(0);
+                final String suspect = c.getString(1);
+                mCrime.setSuspectContactId(contactId);
                 mCrime.setSuspect(suspect);
-                mSuspectButton.setText(suspect);
+                getPhoneNumber(contactId, new PhoneCallback() {
+                    @Override
+                    public void onPhoneRetrieved(String phone) {
+                        mCrime.setPhone(phone);
+                        updateSuspectInfo(suspect, phone);
+                    }
+                });
             } finally {
                 c.close();
+            }
+        }
+    }
+
+    private interface PhoneCallback {
+        void onPhoneRetrieved(String phone);
+    }
+
+    private void updateSuspectInfo(String suspectName, String phone) {
+        if (suspectName == null) {
+            return;
+        }
+
+        if (suspectName != null) {
+            mSuspectButton.setText(suspectName);
+            mCallButton.setEnabled(phone != null);
+        }
+    }
+
+    private void getPhoneNumber(Long contactId, PhoneCallback callback) {
+        Log.d("SLD", "getPhoneNumber contactId=" + contactId);
+        if (contactId == null) {
+            callback.onPhoneRetrieved(null);
+        }
+
+        int permissionCheck = ContextCompat.checkSelfPermission(getActivity(),
+                Manifest.permission.READ_CONTACTS);
+        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+            mPhoneCallbackContactId = contactId;
+            mPhoneCallback = callback;
+            ActivityCompat.requestPermissions(getActivity(),
+                    new String[] {Manifest.permission.READ_CONTACTS},
+                    REQUEST_PERMISSION_READ_CONTACT);
+        } else {
+            callback.onPhoneRetrieved(_getPhoneNumber(contactId));
+        }
+    }
+
+    private String _getPhoneNumber(Long contactId) {
+        if (contactId == null) {
+            return null;
+        }
+
+        Uri uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
+        String[] queryFields = new String[]{
+                ContactsContract.CommonDataKinds.Phone.NUMBER
+        };
+        String where = ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?";
+        String[] selectionArgs = new String[]{contactId.toString()};
+        Cursor c = getActivity().getContentResolver().query(
+                uri, queryFields, where, selectionArgs, null);
+        try {
+            // Double-check that you actually got results
+            if (c.getCount() == 0) {
+                return null;
+            }
+            c.moveToFirst();
+            return c.getString(0);
+        } finally {
+            c.close();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_PERMISSION_READ_CONTACT: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    mPhoneCallback.onPhoneRetrieved(_getPhoneNumber(mPhoneCallbackContactId));
+                } else {
+                    mPhoneCallback.onPhoneRetrieved(null);
+                }
+                mPhoneCallback = null;
+                mPhoneCallbackContactId = null;
+                break;
+            }
+            case REQUEST_PERMISSION_MAKE_CALL: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    makeCall();
+                }
+                break;
             }
         }
     }
