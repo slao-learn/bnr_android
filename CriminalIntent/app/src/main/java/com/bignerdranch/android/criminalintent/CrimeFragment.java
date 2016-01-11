@@ -16,7 +16,6 @@ import android.support.v4.content.ContextCompat;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -27,6 +26,8 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 
 import java.util.Date;
 import java.util.UUID;
@@ -56,6 +57,8 @@ public class CrimeFragment extends Fragment{
     private Button mCallButton;
     private Long mPhoneCallbackContactId;
     private PhoneCallback mPhoneCallback;
+    private ImageButton mPhotoButton;
+    private ImageView mPhotoView;
 
     public static CrimeFragment newInstance(UUID crimeId) {
         Bundle args = new Bundle();
@@ -206,7 +209,7 @@ public class CrimeFragment extends Fragment{
                                 Manifest.permission.CALL_PHONE);
                         if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
                             ActivityCompat.requestPermissions(getActivity(),
-                                    new String[] {Manifest.permission.CALL_PHONE},
+                                    new String[]{Manifest.permission.CALL_PHONE},
                                     REQUEST_PERMISSION_MAKE_CALL);
                         } else {
                             makeCall();
@@ -219,11 +222,13 @@ public class CrimeFragment extends Fragment{
         getPhoneNumber(mCrime.getSuspectContactId(), new PhoneCallback() {
             @Override
             public void onPhoneRetrieved(String phone) {
-                Log.d("SLD", "onPhoneRetrieved phone=" + phone);
                 mCrime.setPhone(phone);
                 updateSuspectInfo(mCrime.getSuspect(), phone);
             }
         });
+
+        mPhotoButton = (ImageButton) v.findViewById(R.id.crime_camera);
+        mPhotoView = (ImageView) v.findViewById(R.id.crime_photo);
 
         return v;
     }
@@ -301,7 +306,6 @@ public class CrimeFragment extends Fragment{
     }
 
     private void getPhoneNumber(Long contactId, PhoneCallback callback) {
-        Log.d("SLD", "getPhoneNumber contactId=" + contactId);
         if (contactId == null) {
             callback.onPhoneRetrieved(null);
         }
