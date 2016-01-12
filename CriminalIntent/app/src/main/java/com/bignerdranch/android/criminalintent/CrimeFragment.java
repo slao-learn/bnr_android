@@ -42,6 +42,7 @@ public class CrimeFragment extends Fragment{
     private static final String ARG_CRIME_ID = "crime_id";
     private static final String DIALOG_DATE = "DialogDate";
     private static final String DIALOG_TIME = "DialogTime";
+    private static final String DIALOG_PHOTO = "DialogPhoto";
 
     private static final int REQUEST_DATE = 0;
     private static final int REQUEST_TIME = 1;
@@ -436,10 +437,19 @@ public class CrimeFragment extends Fragment{
     private void updatePhotoView() {
         if (mPhotoFile == null || !mPhotoFile.exists()) {
             mPhotoView.setImageDrawable(null);
+            mPhotoView.setOnClickListener(null);
         } else {
             Bitmap bitmap = PictureUtils.getScaledBitmap(
                     mPhotoFile.getPath(), getActivity());
             mPhotoView.setImageBitmap(bitmap);
+            mPhotoView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    FragmentManager manager = getFragmentManager();
+                    PhotoFragment dialog = PhotoFragment.newInstance(mPhotoFile.getPath());
+                    dialog.show(manager, DIALOG_PHOTO);
+                }
+            });
         }
     }
 }
