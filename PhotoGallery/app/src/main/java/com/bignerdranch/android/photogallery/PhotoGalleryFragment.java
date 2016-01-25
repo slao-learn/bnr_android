@@ -116,8 +116,11 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     private class PhotoAdapter extends RecyclerView.Adapter<PhotoHolder> {
+        private static final int PRELOAD_SIZE_BEFORE = 10;
+        private static final int PRELOAD_SIZE_AFTER = 10;
 
         private List<GalleryItem> mGalleryItems;
+        private String[] preloadUrls = new String[PRELOAD_SIZE_BEFORE + PRELOAD_SIZE_AFTER];
 
         public PhotoAdapter(List<GalleryItem> galleryItems) {
             mGalleryItems = galleryItems;
@@ -136,11 +139,20 @@ public class PhotoGalleryFragment extends Fragment {
             Drawable placeholder = getResources().getDrawable(R.drawable.bill_up_close);
             holder.bindDrawable(placeholder);
             mThumbnailDownloader.queueThumbnail(holder, galleryItem.getUrl());
+            preloadThumbnails(position);
         }
 
         @Override
         public int getItemCount() {
             return mGalleryItems.size();
+        }
+
+        private void preloadThumbnails(int position) {
+            int j = 0;
+            for (int i = position - PRELOAD_SIZE_BEFORE; i >= 0 && i < position + PRELOAD_SIZE_AFTER && i < mGalleryItems.size(); ++i) {
+                preloadUrls[j++] =  mGalleryItems.get(position).getUrl();
+            }
+            mThumbnailDownloader.preloadBitmaps(preloadUrls, j);
         }
     }
 
