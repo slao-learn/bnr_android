@@ -106,6 +106,7 @@ public class PhotoGalleryFragment extends Fragment {
             @Override
             public boolean onQueryTextSubmit(String query) {
                 Log.d(TAG, "QueryTextSubmit: " + query);
+                QueryPreferences.setStoredKey(getActivity(), query);
                 updateItems(true);
                 return true;
             }
@@ -118,11 +119,24 @@ public class PhotoGalleryFragment extends Fragment {
         });
     }
 
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_item_clear:
+                QueryPreferences.setStoredKey(getActivity(), null);
+                updateItems(true);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
     private void updateItems(boolean resetToFirstPage) {
         if (resetToFirstPage) {
             mPage = 1;
         }
-        new FetchItemsTask().execute(mPage++);
+        String query = QueryPreferences.getStoredKey(getActivity());
+        new FetchItemsTask(query).execute(mPage++);
     }
 
     private void setupAdapter() {
@@ -190,14 +204,19 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     private class FetchItemsTask extends AsyncTask<Integer, Void, List<GalleryItem>> {
+        private String mQuery;
+
+        public FetchItemsTask(String query) {
+            mQuery = query;
+        }
+
         @Override
         protected List<GalleryItem> doInBackground(Integer... params) {
             int page = params[0];
-            String query = "robot"; // Just for testing
-            if (query == null) {
+            if (mQuery == null) {
                 return new FlickrFetchr().fetchRecentPhotos(page);
             } else {
-                return new FlickrFetchr().searchPhotos(query, page);
+                return new FlickrFetchr().searchPhotos(mQuery, page);
             }
         }
 
