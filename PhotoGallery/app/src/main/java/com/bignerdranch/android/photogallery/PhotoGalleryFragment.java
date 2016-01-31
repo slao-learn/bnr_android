@@ -1,5 +1,6 @@
 package com.bignerdranch.android.photogallery;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -17,7 +18,9 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +33,7 @@ public class PhotoGalleryFragment extends Fragment {
     private static String TAG = "PhotoGalleryFragment";
 
     private RecyclerView mPhotoRecyclerView;
+    private ProgressBar mProgressBar;
     private List<GalleryItem> mItems = new ArrayList<>();
     private int mPage = 1;
     private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
@@ -77,6 +81,10 @@ public class PhotoGalleryFragment extends Fragment {
             }
         });
 
+        mProgressBar = (ProgressBar) v.findViewById(R.id.progress_bar);
+
+        hideProgressBar();
+
         return v;
     }
 
@@ -107,7 +115,15 @@ public class PhotoGalleryFragment extends Fragment {
             public boolean onQueryTextSubmit(String query) {
                 Log.d(TAG, "QueryTextSubmit: " + query);
                 QueryPreferences.setStoredKey(getActivity(), query);
+                showProgressBar();
                 updateItems(true);
+
+                View view = getActivity().getCurrentFocus();
+                if (view != null) {
+                    InputMethodManager imm = (InputMethodManager)getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
+
                 return true;
             }
 
@@ -137,6 +153,16 @@ public class PhotoGalleryFragment extends Fragment {
             default:
                 return super.onOptionsItemSelected(item);
         }
+    }
+
+    private void showProgressBar() {
+        mProgressBar.setVisibility(View.VISIBLE);
+        mPhotoRecyclerView.setVisibility(View.GONE);
+    }
+
+    private void hideProgressBar() {
+        mProgressBar.setVisibility(View.GONE);
+        mPhotoRecyclerView.setVisibility(View.VISIBLE);
     }
 
     private void updateItems(boolean resetToFirstPage) {
@@ -232,6 +258,7 @@ public class PhotoGalleryFragment extends Fragment {
         protected void onPostExecute(List<GalleryItem> items) {
             mItems.addAll(items);
             setupAdapter();
+            hideProgressBar();
         }
     }
 }
