@@ -49,8 +49,6 @@ public class PhotoGalleryFragment extends Fragment {
         setHasOptionsMenu(true);
         updateItems(true);
 
-        PollService.setServiceAlarm(getActivity(), true);
-
         Handler responseHandler = new Handler();
         mThumbnailDownloader = new ThumbnailDownloader<>(responseHandler);
         mThumbnailDownloader.setThumbnailDownloadListener(
@@ -143,6 +141,13 @@ public class PhotoGalleryFragment extends Fragment {
                 searchView.setQuery(query, false);
             }
         });
+
+        MenuItem toggleItem = menu.findItem(R.id.menu_item_toggle_polling);
+        if (PollService.isServiceAlarmOn(getActivity())) {
+            toggleItem.setTitle(R.string.stop_polling);
+        } else {
+            toggleItem.setTitle(R.string.start_polling);
+        }
     }
 
     @Override
@@ -151,6 +156,11 @@ public class PhotoGalleryFragment extends Fragment {
             case R.id.menu_item_clear:
                 QueryPreferences.setStoredKey(getActivity(), null);
                 updateItems(true);
+                return true;
+            case R.id.menu_item_toggle_polling:
+                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
+                PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+                getActivity().invalidateOptionsMenu();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -172,7 +182,7 @@ public class PhotoGalleryFragment extends Fragment {
             mPage = 1;
         }
         String query = QueryPreferences.getStoredKey(getActivity());
-        new FetchItemsTask(query).execute(mPage++);
+        new FetchItemsTask(query).execute(mPage);
     }
 
     private void setupAdapter() {
@@ -258,7 +268,11 @@ public class PhotoGalleryFragment extends Fragment {
 
         @Override
         protected void onPostExecute(List<GalleryItem> items) {
+            if (mPage == 1) {
+                mItems.clear();
+            }
             mItems.addAll(items);
+            mPage++;
             setupAdapter();
             hideProgressBar();
         }
