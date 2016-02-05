@@ -1,7 +1,6 @@
 package com.bignerdranch.android.photogallery;
 
 import android.app.AlarmManager;
-import android.app.DownloadManager;
 import android.app.IntentService;
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -13,7 +12,6 @@ import android.os.SystemClock;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
-import android.widget.Gallery;
 
 import java.util.List;
 

@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
@@ -143,7 +144,7 @@ public class PhotoGalleryFragment extends Fragment {
         });
 
         MenuItem toggleItem = menu.findItem(R.id.menu_item_toggle_polling);
-        if (PollService.isServiceAlarmOn(getActivity())) {
+        if (isPollingStarted()) {
             toggleItem.setTitle(R.string.stop_polling);
         } else {
             toggleItem.setTitle(R.string.start_polling);
@@ -158,12 +159,28 @@ public class PhotoGalleryFragment extends Fragment {
                 updateItems(true);
                 return true;
             case R.id.menu_item_toggle_polling:
-                boolean shouldStartAlarm = !PollService.isServiceAlarmOn(getActivity());
-                PollService.setServiceAlarm(getActivity(), shouldStartAlarm);
+                togglePolling();
                 getActivity().invalidateOptionsMenu();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private boolean isPollingStarted() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            return PollServiceJob.isScheduled(getActivity());
+        } else {
+            return PollService.isServiceAlarmOn(getActivity());
+        }
+    }
+
+    private void togglePolling() {
+        boolean shouldStart = !isPollingStarted();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            PollServiceJob.schedule(getActivity(), shouldStart);
+        } else {
+            PollService.setServiceAlarm(getActivity(), shouldStart);
         }
     }
 
